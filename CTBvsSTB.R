@@ -53,6 +53,9 @@ counts_matrix[indx] <- lapply(counts_matrix[indx], function(x) as.numeric(as.cha
 # Now create the countsDGE!
 countsDGE <- DGEList(counts_matrix)
 
+
+currentVar <- "Sex"
+
 # fit the gene expression to a linear model
 names <- c(currentVar, "Cell_type")
 samples <- c("FemCTB", "FemSTB", "MCTB", "MSTB")
@@ -67,7 +70,6 @@ rownames(metadata) <- samples
 colnames(metadata) <- names
 metadata <- as.data.frame(metadata)
 
-currentVar <- "Sex"
 
 # This ias a little convenient function to get the design matrix
 getDesignMatrix <- function(variable, metadata) {
@@ -124,19 +126,25 @@ scale_rows = function(x){
 
 scaledCPMgeneExpr <- scale_rows(geneExprCPM2plot)
 
-# Now I'll save the data, and run the dendogram related code on the phoenix super cluster
-# This is because I need to find a more memory efficient method for this bit
-# If you have a powerful desktop cpu you could probably get it
-# I need to resort to the super computer though
 saveRDS(scaledCPMgeneExpr, file = "~/Documents/PhD/Data/scaledCPMgeneExpr.rds")
+saveRDS(topGenes, file = "~/Documents/PhD/Data/topGenes.rds")
 
-# This code below run on phoenix
-dendogramObject <- as.dendrogram(hclust(dist(scaledCPMgeneExpr), method = "ward.D2"))
-clusterOrder <- order.dendrogram(dendogramObject)
-clusteredMatrix <- scaledCPMgeneExpr[clusterOrder, ]
-geneExprCPM2ggplot <- reshape2::melt(clusteredMatrix, value.name = "scaledCPM")
-colnames(geneExprCPM2ggplot) <- c("GeneID", "Vineyard", "scaledCPM")
-# Load in old object back
+geneExprCPM2ggplot <- reshape2::melt(scaledCPMgeneExpr, value.name = "scaledCPM")
+colnames(geneExprCPM2ggplot) <- c("GeneID", "Sample", "scaledCPM") #%>%
+  #as.data.frame()
 
-geneExprCPM2ggplot <- readRDS()
+
+geneExprPVal <- dplyr::select(topGenes, .data$GeneID, .data$P.Value)
+GeneOrder <- levels(geneExprCPM2ggplot$GeneID)
+GeneOrder <- data.frame(GeneOrder, 1)
+rownames(GeneOrder) <- GeneOrder$GeneOrder
+colnames(GeneOrder) <- c("GeneID", "boo")
+geneExprPVal <- dplyr::left_join(GeneOrder, geneExprPVal, by = "GeneID")
+geneExprPVal$boo <- NULL
+geneExprPVal$booo <- NULL
+
+geneExprCPM2ggplotPVal <- left_join(geneExprCPM2ggplot, geneExprPVal, by = 'GeneID')
+geneExprCPM2ggplotPVal$GeneID <- as.factor(geneExprCPM2ggplotPVal$GeneID)
+
+geneExprCPM2ggplotPVal %>% head
 
