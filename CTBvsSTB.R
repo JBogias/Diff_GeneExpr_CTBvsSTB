@@ -106,3 +106,37 @@ geneExprPValFull <- dplyr::select(DE_Genes, .data$GeneID, .data$P.Value)
 topGenesTotal <- rownames(limma::topTable(fitGeneExpr, coef = slopeContrast, number = nGenesTotal))
 inputValsTotal <- metadata[[currentVar]]
 sampleOrderTotal <- order(inputValsTotal)
+
+### Get the cpm for all values
+#This is the step required for the FDR
+
+geneExprCPM2plot <- cpm(countsDGE, log = TRUE)[topGenesTotal, sampleOrder]
+colnames(geneExprCPM2plot) <- make.names(colnames(geneExprCPM2plot), unique = TRUE)
+
+## Scale by rows
+#In this function we are calculating the mean and standard deviation for every row of the matrix. Then we subtract the mean from the raw value and divide by the calculated standard deviation to generate our scaled values. Dividing by the standard deviation means that
+
+scale_rows = function(x){
+  m = apply(x, 1, mean, na.rm = T)
+  s = apply(x, 1, sd, na.rm = T)
+  return((x - m) / s)
+}
+
+scaledCPMgeneExpr <- scale_rows(geneExprCPM2plot)
+
+# Now I'll save the data, and run the dendogram related code on the phoenix super cluster
+# This is because I need to find a more memory efficient method for this bit
+# If you have a powerful desktop cpu you could probably get it
+# I need to resort to the super computer though
+saveRDS(scaledCPMgeneExpr, file = "~/Documents/PhD/Data/scaledCPMgeneExpr.rds")
+
+# This code below run on phoenix
+dendogramObject <- as.dendrogram(hclust(dist(scaledCPMgeneExpr), method = "ward.D2"))
+clusterOrder <- order.dendrogram(dendogramObject)
+clusteredMatrix <- scaledCPMgeneExpr[clusterOrder, ]
+geneExprCPM2ggplot <- reshape2::melt(clusteredMatrix, value.name = "scaledCPM")
+colnames(geneExprCPM2ggplot) <- c("GeneID", "Vineyard", "scaledCPM")
+# Load in old object back
+
+geneExprCPM2ggplot <- readRDS()
+
