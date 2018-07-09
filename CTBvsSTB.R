@@ -1,3 +1,9 @@
+library(edgeR)
+library(limma)
+library(magrittr)
+library(dplyr)
+library(tibble)
+
 # Define the sub-directory
 subdir <- "~/Documents/PhD/Data/counts"
 
@@ -41,6 +47,8 @@ counts_matrix[indx] <- lapply(counts_matrix[indx], function(x) as.numeric(as.cha
 
 # Now create the DGEList!
 countsDGE <- DGEList(counts_matrix)
+
+
 
 
 
