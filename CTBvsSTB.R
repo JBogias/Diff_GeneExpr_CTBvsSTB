@@ -8,6 +8,8 @@ library(tibble)
 library(RColorBrewer)
 library(DESeq)
 library(splitstackshape)
+library(biomaRt)
+library(GO.db)
 
 # Define the sub-directory
 subdir <- "~/Documents/PhD/Data/counts"
@@ -54,10 +56,10 @@ counts_matrix[indx] <- lapply(counts_matrix[indx], function(x) as.numeric(as.cha
 countsDGE <- DGEList(counts_matrix)
 
 
-currentVar <- "Sex"
+currentVar <- "Cell_type"
 
 # fit the gene expression to a linear model
-names <- c(currentVar, "Cell_type")
+names <- c("Sex", "Cell_type")
 samples <- c("FemCTB", "FemSTB", "MCTB", "MSTB")
 FemCTB_meta <- c("Female", "Cytotrophoblast")
 FemSTB_meta <- c("Female", "Syncytiotrophoblast")
@@ -147,4 +149,59 @@ geneExprCPM2ggplotPVal <- left_join(geneExprCPM2ggplot, geneExprPVal, by = 'Gene
 geneExprCPM2ggplotPVal$GeneID <- as.factor(geneExprCPM2ggplotPVal$GeneID)
 
 geneExprCPM2ggplotPVal %>% head
+
+saveRDS(geneExprCPM2ggplotPVal, file = "~/Documents/PhD/Data/geneExprCPM2ggplotPVal.rds")
+
+
+# Start on the heatmap
+
+## Set colour information
+
+nColours <- 101
+varRange <- range(metadata[[currentVar]])
+varGradient <- floor(seq(varRange[1], varRange[2], length.out = nColours))
+varPositions <- findInterval(appmetaG[[currentVar]], varGradient)
+varPalette <- grDevices::colorRampPalette(c("brown", "yellow"))(nColours)
+varColours <- varPalette[varPositions]
+
+saveRDS(varPalette, "~/R/R projects/Grapevine_data/Grapevine_Data_Analysis/R_files/dataFiles/varPalette.rds")
+nColoursPVal <- nGenesTotal
+PValrange <- range(geneExprPValFull$P.Value)
+PValgradient <- seq(from = PValrange[1], to = PValrange[2], length.out = nColoursPVal)
+PValpositions <- findInterval(geneExprPVal$P.Value, PValgradient)
+PValpalette <- grDevices::colorRampPalette(c("green", "light green", "yellow", "pink", "red", "dark red"))(nColoursPVal)
+PValcolours <- PValpalette[PValpositions]
+
+heatmapColours <- grDevices::colorRampPalette(c("dark blue", "blue", "cyan", "white", "pink", "red", "dark red"))(540)
+
+geneExprPVal <- tibble::as.tibble(geneExprPVal)
+geneExprPVal$GeneID <- factor(geneExprPVal$GeneID)
+geneExprCPM2ggplot <- tibble::as.tibble(geneExprCPM2ggplot)
+levels(geneExprPVal$GeneID) <- levels(geneExprCPM2ggplot$GeneID)
+
+GeneExprheatmap <- ggplot2::ggplot(data = head(geneExprCPM2ggplotPVal, 100),
+                                   aes(x = Sample, y = GeneID, fill = scaledCPM)) +
+  ggplot2::geom_raster(stat = "identity", position = "identity") +
+  ggplot2::xlab("Sample") +
+  ggplot2::scale_fill_gradientn(colours = heatmapColours) +
+  ggplot2::theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+GeneExprheatmap
+
+# Now for the GO term stuff
+
+mart <- useMart("ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "ensembl.org")
+
+ens_and_GO_ID <- getBM(attributes = c("ensembl_gene_id", "go_id"), filters = "ensembl_gene_id",
+                       values = topGenes$GeneID, mart = mart)
+
+GO_ID_and_ontology <- getBM(attributes = c("ensembl_gene_id", "go_id", "name_1006"),
+                            filters = "go",
+                            values = ens_and_GO_ID$go_id,
+                            mart = mart)
+
+
+
+
+
 
