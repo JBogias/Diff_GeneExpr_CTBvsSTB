@@ -1,3 +1,6 @@
+library(dplyr)
+
+
 # Define the sub-directory in which you can find sorted bam counts files (the output of featureCounts)
 subdir <- "~/Path/to/files"
 
