@@ -1,5 +1,6 @@
 library(edgeR)
 library(limma)
+library(stringr)
 library(magrittr)
 library(dplyr)
 library(readr)
@@ -56,24 +57,28 @@ indx <- sapply(counts_matrix, is.factor)
 counts_matrix[indx] <- lapply(counts_matrix[indx], function(x) as.numeric(as.character(x)))
 
 # Now create the countsDGE!
-countsDGE <- DGEList(counts_matrix)
+countsDGE <- DGEList(synVScyt)
+
+# Get the cpm that will be required for filtering out lowly expressed genes
+cpm <- cpm(countsDGE, log = FALSE)
 
 # So lets check our read quantities
 # Here I'm checking how many genes have no reads across all samples
-table(rowSums(countsDGE$counts == 1) == 3)
+table(rowSums(countsDGE$counts == 0) == 3)
+table(rowSums(lcpm == 0) >= 3)
 
 # We want to adjust our threshold to incorporate data that had 20 or more reads, we set a cpm cut-off of 1 which
 # is a log-cpm of 0. This ensures that there are at least 20 reads recorded for each gene. We select 3 as our
 # sample cut-off as we would need at least 3 samples to have above 20 read counts each to be used in downstream
 # analysis on limma.
 # Let 'keep.expr' represent our cut-off
-keep.exprs <- rowSums(cpm > 1) >= 3
+keep.exprs <- rowSums(cpm > 1) >= 2
 
 # Check dimensions to see how many genes we have now (to compare later, save it as an object if you want)
 before_filter <- dim(countsDGE)
 
 ## Now we will subset the data here
-countsDGE<- countsDGE[
+countsDGE <- countsDGE[
   keep.exprs,
   keep.lib.sizes = FALSE
   ]
@@ -144,11 +149,11 @@ convertIDs <- function( ids, from, to, db, ifMultiple=c("putNA", "useFirst")) {
   return( selRes[ match( ids, selRes[,1] ), 2 ] )
 }
 
-new_geneIDs <- str_remove(topGenes$GeneID, "\\..*")
+topGenes$GeneID <- str_remove(topGenes$GeneID, "\\..*")
 
 mart <- useMart("ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "ensembl.org")
 
-ens_and_GO_ID <- getBM(attributes = c("ensembl_gene_id", "go_id", "external_gene_name", "name_1006", "definition_1006"), filters = "ensembl_gene_id",
+ens_and_GO_ID <- getBM(attributes = c("ensembl_gene_id", "go_id", "external_gene_name", "external_transcript_name", "description", "name_1006", "definition_1006"), filters = "ensembl_gene_id",
                        values = topGenes$GeneID, mart = mart)
 
 GO_ID_and_ontology <- getBM(attributes = c("ensembl_gene_id", "go_id", "name_1006"),
