@@ -57,7 +57,7 @@ indx <- sapply(counts_matrix, is.factor)
 counts_matrix[indx] <- lapply(counts_matrix[indx], function(x) as.numeric(as.character(x)))
 
 # Now create the countsDGE!
-countsDGE <- DGEList(synVScyt)
+countsDGE <- DGEList(counts_matrix)
 
 # Get the cpm that will be required for filtering out lowly expressed genes
 cpm <- cpm(countsDGE, log = FALSE)
