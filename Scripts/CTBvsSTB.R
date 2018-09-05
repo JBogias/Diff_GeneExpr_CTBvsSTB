@@ -115,6 +115,11 @@ int <- if_else(numericVar, 1, 0)
 # There is no metadata that I could find from the study, so I've set the paramter to NULL
 # this means that each array is treated as a replicates
 
+voom <- voom(countsDGE, design = NULL, plot = FALSE)
+
+mdsGeneExpr <- plotMDS(voom$E,
+                       labels = colnames(countsDGE$counts))
+
 fitGeneExpr <- voom(countsDGE, design = NULL, plot = FALSE) %>%
   lmFit(design = NULL) %>%
   eBayes()
